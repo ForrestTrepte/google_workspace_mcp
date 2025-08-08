@@ -68,3 +68,9 @@ dev = [
 [tool.setuptools]
 packages = [ "auth", "gcalendar", "core", "gdocs", "gdrive", "gmail", "gchat", "gsheets", "gforms", "gslides", "gtasks", "gsearch"]
 py-modules = [ "main"]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.17.1",
+    "pytest>=8.4.1",
+]
