@@ -64,6 +64,7 @@ workspace-mcp = "main:main"
 [project.optional-dependencies]
 dev = [
     "twine>=5.0.0",
+    "debugpy>=1.8.16",
 ]
 
 [tool.setuptools]
