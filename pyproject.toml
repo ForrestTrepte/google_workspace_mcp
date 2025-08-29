@@ -65,6 +65,7 @@ workspace-mcp = "main:main"
 dev = [
     "twine>=5.0.0",
     "debugpy>=1.8.16",
+    "mypy>=1.17.1",
 ]
 
 [tool.setuptools]
