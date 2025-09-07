@@ -4,14 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "workspace-mcp"
-version = "1.2.2"
+version = "1.4.5"
 description = "Comprehensive, highly performant Google Workspace Streamable HTTP & SSE MCP Server for Calendar, Gmail, Docs, Sheets, Slides & Drive"
 readme = "README.md"
 keywords = [ "mcp", "google", "workspace", "llm", "ai", "claude", "model", "context", "protocol", "server"]
 requires-python = ">=3.10"
 dependencies = [
  "fastapi>=0.115.12",
- "fastmcp==2.11.1",
+ "fastmcp==2.11.3",
  "google-api-python-client>=2.168.0",
  "google-auth-httplib2>=0.2.0",
  "google-auth-oauthlib>=1.2.2",
@@ -22,6 +22,7 @@ dependencies = [
  "aiohttp>=3.9.0",
  "cachetools>=5.3.0",
  "cryptography>=41.0.0",
+ "python-dotenv>=1.1.0",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -66,7 +67,7 @@ dev = [
 ]
 
 [tool.setuptools]
-packages = [ "auth", "gcalendar", "core", "gdocs", "gdrive", "gmail", "gchat", "gsheets", "gforms", "gslides", "gtasks", "gsearch"]
+packages = [ "auth", "gcalendar", "core", "gdocs", "gdocs.managers", "gdrive", "gmail", "gchat", "gsheets", "gforms", "gslides", "gtasks", "gsearch"]
 py-modules = [ "main"]
 
 [dependency-groups]
@@ -74,3 +75,6 @@ dev = [
     "mypy>=1.17.1",
     "pytest>=8.4.1",
 ]
+
+[tool.setuptools.package-data]
+core = ["tool_tiers.yaml"]
