@@ -4,11 +4,11 @@
 
 | | automated ([test_tasks_tools](./test_tasks_tools.py)) | MCP inspector| Claude desktop |
 | --- | --- | --- | --- |
-| list_task_lists | ✅ | ✅ | ✅ |
-| list_task_lists with max_results | ❌ | ✅ | ✅ |
-| list_tasks | ✅ | ❌ | ✅ |
-| list_tasks with max_results | ✅ | ❌ | ✅ |
-| list_tasks with completed | ✅ | ❌ | ✅ |
+| list_task_lists (defaults) | ✅ | ✅ | ✅ |
+| list_task_lists with max_results | ✅ | ✅ | ✅ |
+| list_tasks (defaults) | ✅ | ✅ | ✅ |
+| list_tasks with max_results | ✅ | ✅ | ✅ |
+| list_tasks with completed | ✅ | ✅ | ✅ |
 
 ## Claude desktop prompts
 
