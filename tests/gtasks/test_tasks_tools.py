@@ -16,3 +16,14 @@ async def test_list_task_lists() -> None:
     async with client:
         result = await client.call_tool("list_task_lists", {})
         assert result is not None
+        assert "Connector test (ID: d0R6V2pRalU5M0d2MkNFZQ)" in result.data
+
+
+@pytest.mark.asyncio
+async def test_list_task_lists_max_results() -> None:
+    client = Client("http://localhost:8111/mcp", auth="oauth")
+    async with client:
+        result = await client.call_tool("list_task_lists", {"max_results": 2})
+        assert result is not None
+        # each task list in result has the string "(ID: <some id>)"
+        assert result.data.count("(ID: ") == 2
