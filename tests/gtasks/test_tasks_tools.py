@@ -88,3 +88,35 @@ async def test_list_tasks_show_completed() -> None:
         assert "Status: completed" in result.data
         completed_count = result.data.count("(ID: ")
         assert completed_count > no_completed_count
+
+
+@pytest.mark.asyncio
+async def test_list_tasks_subtasks() -> None:
+    client = Client("http://localhost:8111/mcp", auth="oauth")
+    async with client:
+        result = await client.call_tool(
+            "list_tasks",
+            {
+                "task_list_id": connector_test_task_list_ID,
+            },
+        )
+        result_lines = result.data.split("\n")
+        bullet_lines = [line.rstrip() for line in result_lines if line.strip().startswith("- ")]
+        task_names = [get_task_name(bullet_line) for bullet_line in bullet_lines]
+
+        first_task_index = task_names.index("First task")
+        assert first_task_index >= 0
+        second_task_index = task_names.index("Second task")
+        assert second_task_index == first_task_index + 1
+        subtask_1_index = task_names.index("Second task, subtask 1")
+        assert subtask_1_index == second_task_index + 1
+        subtask_2_index = task_names.index("Second task, subtask 2")
+        assert subtask_2_index == subtask_1_index + 1
+        third_task_index = task_names.index("Third task")
+        assert third_task_index == subtask_2_index + 1
+
+
+def get_task_name(bullet_line: str) -> str:
+    no_bullet = bullet_line.strip().replace("- ", "")
+    no_id = no_bullet.split(" (ID: ")[0]
+    return no_id
