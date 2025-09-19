@@ -6,9 +6,10 @@ This module provides MCP tools for interacting with Google Tasks API.
 
 import logging
 import asyncio
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
-from googleapiclient.errors import HttpError
+from googleapiclient.errors import HttpError # type: ignore
+from mcp import Resource
 
 from auth.service_decorator import require_google_service
 from core.server import server
@@ -20,11 +21,12 @@ LIST_TASKS_MAX_RESULTS_DEFAULT = 20
 LIST_TASKS_MAX_RESULTS_MAX = 10_000
 LIST_TASKS_MAX_POSITION = "99999999999999999999"
 
-@server.tool()
-@require_google_service("tasks", "tasks_read")
-@handle_http_errors("list_task_lists", service_type="tasks")
+
+@server.tool()  # type: ignore
+@require_google_service("tasks", "tasks_read")  # type: ignore
+@handle_http_errors("list_task_lists", service_type="tasks")  # type: ignore
 async def list_task_lists(
-    service,
+    service: Resource,
     user_google_email: str,
     max_results: int = 1000,
     page_token: Optional[str] = None
@@ -43,7 +45,7 @@ async def list_task_lists(
     logger.info(f"[list_task_lists] Invoked. Email: '{user_google_email}'")
 
     try:
-        params = {}
+        params: Dict[str, Any] = {}
         if max_results is not None:
             params["maxResults"] = max_results
         if page_token:
@@ -80,11 +82,11 @@ async def list_task_lists(
         raise Exception(message)
 
 
-@server.tool()
-@require_google_service("tasks", "tasks_read")
-@handle_http_errors("get_task_list", service_type="tasks")
+@server.tool()  # type: ignore
+@require_google_service("tasks", "tasks_read")  # type: ignore
+@handle_http_errors("get_task_list", service_type="tasks")  # type: ignore
 async def get_task_list(
-    service,
+    service: Resource,
     user_google_email: str,
     task_list_id: str
 ) -> str:
@@ -124,11 +126,11 @@ async def get_task_list(
         raise Exception(message)
 
 
-@server.tool()
-@require_google_service("tasks", "tasks")
-@handle_http_errors("create_task_list", service_type="tasks")
+@server.tool()  # type: ignore
+@require_google_service("tasks", "tasks")  # type: ignore
+@handle_http_errors("create_task_list", service_type="tasks")  # type: ignore
 async def create_task_list(
-    service,
+    service: Resource,
     user_google_email: str,
     title: str
 ) -> str:
@@ -172,11 +174,11 @@ async def create_task_list(
         raise Exception(message)
 
 
-@server.tool()
-@require_google_service("tasks", "tasks")
-@handle_http_errors("update_task_list", service_type="tasks")
+@server.tool()  # type: ignore
+@require_google_service("tasks", "tasks")  # type: ignore
+@handle_http_errors("update_task_list", service_type="tasks")  # type: ignore
 async def update_task_list(
-    service,
+    service: Resource,
     user_google_email: str,
     task_list_id: str,
     title: str
@@ -222,11 +224,11 @@ async def update_task_list(
         raise Exception(message)
 
 
-@server.tool()
-@require_google_service("tasks", "tasks")
-@handle_http_errors("delete_task_list", service_type="tasks")
+@server.tool()  # type: ignore
+@require_google_service("tasks", "tasks")  # type: ignore
+@handle_http_errors("delete_task_list", service_type="tasks")  # type: ignore
 async def delete_task_list(
-    service,
+    service: Resource,
     user_google_email: str,
     task_list_id: str
 ) -> str:
@@ -262,11 +264,11 @@ async def delete_task_list(
         raise Exception(message)
 
 
-@server.tool()
-@require_google_service("tasks", "tasks_read")
-@handle_http_errors("list_tasks", service_type="tasks")
+@server.tool()  # type: ignore
+@require_google_service("tasks", "tasks_read")  # type: ignore
+@handle_http_errors("list_tasks", service_type="tasks")  # type: ignore
 async def list_tasks(
-    service,
+    service: Resource,
     user_google_email: str,
     task_list_id: str,
     max_results: int = LIST_TASKS_MAX_RESULTS_DEFAULT,
@@ -305,7 +307,7 @@ async def list_tasks(
     logger.info(f"[list_tasks] Invoked. Email: '{user_google_email}', Task List ID: {task_list_id}")
 
     try:
-        params = {"tasklist": task_list_id}
+        params: Dict[str, Any] = {"tasklist": task_list_id}
         if max_results is not None:
             params["maxResults"] = max_results
         if page_token:
@@ -434,11 +436,11 @@ def sort_tasks_by_position(tasks: List[Dict[str, str]]) -> int:
     return orphaned_subtasks
 
 
-@server.tool()
-@require_google_service("tasks", "tasks_read")
-@handle_http_errors("get_task", service_type="tasks")
+@server.tool()  # type: ignore
+@require_google_service("tasks", "tasks_read")  # type: ignore
+@handle_http_errors("get_task", service_type="tasks")  # type: ignore
 async def get_task(
-    service,
+    service: Resource,
     user_google_email: str,
     task_list_id: str,
     task_id: str
@@ -495,11 +497,11 @@ async def get_task(
         raise Exception(message)
 
 
-@server.tool()
-@require_google_service("tasks", "tasks")
-@handle_http_errors("create_task", service_type="tasks")
+@server.tool()  # type: ignore
+@require_google_service("tasks", "tasks")  # type: ignore
+@handle_http_errors("create_task", service_type="tasks")  # type: ignore
 async def create_task(
-    service,
+    service: Resource,
     user_google_email: str,
     task_list_id: str,
     title: str,
@@ -570,11 +572,11 @@ async def create_task(
         raise Exception(message)
 
 
-@server.tool()
-@require_google_service("tasks", "tasks")
-@handle_http_errors("update_task", service_type="tasks")
+@server.tool()  # type: ignore
+@require_google_service("tasks", "tasks")  # type: ignore
+@handle_http_errors("update_task", service_type="tasks")  # type: ignore
 async def update_task(
-    service,
+    service: Resource,
     user_google_email: str,
     task_list_id: str,
     task_id: str,
@@ -652,11 +654,11 @@ async def update_task(
         raise Exception(message)
 
 
-@server.tool()
-@require_google_service("tasks", "tasks")
-@handle_http_errors("delete_task", service_type="tasks")
+@server.tool()  # type: ignore
+@require_google_service("tasks", "tasks")  # type: ignore
+@handle_http_errors("delete_task", service_type="tasks")  # type: ignore
 async def delete_task(
-    service,
+    service: Resource,
     user_google_email: str,
     task_list_id: str,
     task_id: str
@@ -694,11 +696,11 @@ async def delete_task(
         raise Exception(message)
 
 
-@server.tool()
-@require_google_service("tasks", "tasks")
-@handle_http_errors("move_task", service_type="tasks")
+@server.tool()  # type: ignore
+@require_google_service("tasks", "tasks")  # type: ignore
+@handle_http_errors("move_task", service_type="tasks")  # type: ignore
 async def move_task(
-    service,
+    service: Resource,
     user_google_email: str,
     task_list_id: str,
     task_id: str,
@@ -773,11 +775,11 @@ async def move_task(
         raise Exception(message)
 
 
-@server.tool()
-@require_google_service("tasks", "tasks")
-@handle_http_errors("clear_completed_tasks", service_type="tasks")
+@server.tool()  # type: ignore
+@require_google_service("tasks", "tasks")  # type: ignore
+@handle_http_errors("clear_completed_tasks", service_type="tasks")  # type: ignore
 async def clear_completed_tasks(
-    service,
+    service: Resource,
     user_google_email: str,
     task_list_id: str
 ) -> str:
