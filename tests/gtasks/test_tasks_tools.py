@@ -1,4 +1,5 @@
 import asyncio
+import re
 import webbrowser
 import pytest
 from fastmcp import Client
@@ -101,22 +102,63 @@ async def test_list_tasks_subtasks() -> None:
             },
         )
         result_lines = result.data.split("\n")
-        bullet_lines = [line.rstrip() for line in result_lines if line.strip().startswith("- ")]
-        task_names = [get_task_name(bullet_line) for bullet_line in bullet_lines]
+        bullet_lines = [
+            line.rstrip()
+            for line in result_lines
+            if line.strip().startswith("- ") or line.strip().startswith("* ")
+        ]
+        task_infos = [get_task_info(bullet_line) for bullet_line in bullet_lines]
+        task_names = [task_info.name for task_info in task_infos]
 
         first_task_index = task_names.index("First task")
         assert first_task_index >= 0
-        second_task_index = task_names.index("Second task")
-        assert second_task_index == first_task_index + 1
-        subtask_1_index = task_names.index("Second task, subtask 1")
-        assert subtask_1_index == second_task_index + 1
-        subtask_2_index = task_names.index("Second task, subtask 2")
-        assert subtask_2_index == subtask_1_index + 1
-        third_task_index = task_names.index("Third task")
-        assert third_task_index == subtask_2_index + 1
+        check_task_info(task_infos, "First task", first_task_index, "-", 0)
+        check_task_info(task_infos, "Second task", first_task_index + 1, "-", 0)
+        check_task_info(task_infos, "Second task, subtask 1", first_task_index + 2, "-", 0)
+        check_task_info(task_infos, "Second task, subtask 2", first_task_index + 3, "-", 0)
+        check_task_info(task_infos, "Third task", first_task_index + 4, "-", 0)
 
 
-def get_task_name(bullet_line: str) -> str:
-    no_bullet = bullet_line.strip().replace("- ", "")
-    no_id = no_bullet.split(" (ID: ")[0]
-    return no_id
+class TaskInfo:
+    def __init__(self, name: str, id: str, bullet_char: str, indent: int) -> None:
+        self.name = name
+        self.id = id
+        self.bullet_char = bullet_char
+        self.indent = indent
+
+
+def get_task_info(bullet_line: str) -> TaskInfo:
+    # Pattern to match: (optional whitespace)(bullet char)(space)(task name)(space)(ID: )(id)(closing paren)
+    pattern = (
+        r"^(?P<indent>\s*)(?P<bullet>[*-])\s+(?P<name>.+?)\s+\(ID:\s+(?P<id>[^)]+)\)"
+    )
+    match = re.match(pattern, bullet_line)
+
+    if not match:
+        raise ValueError(f"Invalid bullet line format: {bullet_line}")
+
+    return TaskInfo(
+        name=match.group("name"),
+        id=match.group("id"),
+        bullet_char=match.group("bullet"),
+        indent=len(match.group("indent")),
+    )
+
+
+def check_task_info(
+    task_infos: list[TaskInfo],
+    expected_name: str,
+    expected_index: int,
+    expected_bullet_char: str,
+    expected_indent: int,
+) -> None:
+    index = -1
+    for index in range(len(task_infos)):
+        if task_infos[index].name == expected_name:
+            break
+        index += 1
+    assert index == expected_index
+
+    task_info = task_infos[index]
+    assert task_info.bullet_char == expected_bullet_char
+    assert task_info.indent == expected_indent
