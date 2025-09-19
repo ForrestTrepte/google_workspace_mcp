@@ -1,6 +1,5 @@
 import asyncio
 import re
-import webbrowser
 import pytest
 from fastmcp import Client
 
@@ -114,8 +113,8 @@ async def test_list_tasks_subtasks() -> None:
         assert first_task_index >= 0
         check_task_info(task_infos, "First task", first_task_index, "-", 0)
         check_task_info(task_infos, "Second task", first_task_index + 1, "-", 0)
-        check_task_info(task_infos, "Second task, subtask 1", first_task_index + 2, "-", 0)
-        check_task_info(task_infos, "Second task, subtask 2", first_task_index + 3, "-", 0)
+        check_task_info(task_infos, "Second task, subtask 1", first_task_index + 2, "*", 2)
+        check_task_info(task_infos, "Second task, subtask 2", first_task_index + 3, "*", 2)
         check_task_info(task_infos, "Third task", first_task_index + 4, "-", 0)
 
 
