@@ -22,6 +22,24 @@ LIST_TASKS_MAX_RESULTS_MAX = 10_000
 LIST_TASKS_MAX_POSITION = "99999999999999999999"
 
 
+class StructuredTask:
+    def __init__(self, task: Dict[str, str]) -> None:
+        self.id = task["id"]
+        self.title = task.get("title", None)
+        self.status = task.get("status", None)
+        self.due = task.get("due", None)
+        self.notes = task.get("notes", None)
+        self.updated = task.get("updated", None)
+        self.completed = task.get("completed", None)
+        self.subtasks: List["StructuredTask"] = []
+
+    def add_subtask(self, subtask: "StructuredTask") -> None:
+        self.subtasks.append(subtask)
+
+    def __repr__(self) -> str:
+        return f"StructuredTask(title={self.title}, {len(self.subtasks)} subtasks)"
+
+
 @server.tool()  # type: ignore
 @require_google_service("tasks", "tasks_read")  # type: ignore
 @handle_http_errors("list_task_lists", service_type="tasks")  # type: ignore
@@ -361,20 +379,12 @@ async def list_tasks(
         if not tasks:
             return f"No tasks found in task list {task_list_id} for {user_google_email}."
 
+        # TODO! remove orphaned_subtasks
         orphaned_subtasks = sort_tasks_by_position(tasks)
+        structured_tasks = get_structured_tasks(tasks)
 
         response = f"Tasks in list {task_list_id} for {user_google_email}:\n"
-        for task in tasks:
-            response += f"- {task.get('title', 'Untitled')} (ID: {task['id']})\n"
-            response += f"  Status: {task.get('status', 'N/A')}\n"
-            if task.get('due'):
-                response += f"  Due: {task['due']}\n"
-            if task.get('notes'):
-                response += f"  Notes: {task['notes'][:100]}{'...' if len(task['notes']) > 100 else ''}\n"
-            if task.get('completed'):
-                response += f"  Completed: {task['completed']}\n"
-            response += f"  Updated: {task.get('updated', 'N/A')}\n"
-            response += "\n"
+        response += serialize_tasks(structured_tasks, 0)
 
         if next_page_token:
             response += f"Next page token: {next_page_token}\n"
@@ -434,6 +444,75 @@ def sort_tasks_by_position(tasks: List[Dict[str, str]]) -> int:
 
     tasks.sort(key=get_sort_key)
     return orphaned_subtasks
+
+
+def get_structured_tasks(tasks: List[Dict[str, str]]) -> List[StructuredTask]:
+    """
+    Convert a flat list of task dictionaries into StructuredTask objects based on parent-child relationships sorted by position.
+
+    Args:
+        tasks (list): List of task dictionaries.
+
+    Returns:
+        list: Sorted list of top-level StructuredTask objects with nested subtasks.
+    """
+    task_dict = {task["id"]: StructuredTask(task) for task in tasks}
+
+    # Placeholder virtual root as parent for top-level tasks
+    root_task = StructuredTask({"id": "root", "title": "Root"})
+
+    for task in tasks:
+        structured_task = task_dict[task["id"]]
+        parent_id = task.get("parent")
+        parent = None
+
+        if not parent_id:
+            # Task without parent: parent to the virtual root
+            parent = root_task
+        elif parent_id in task_dict:
+            # Subtask: parent to its actual parent
+            parent = task_dict[parent_id]
+        else:
+            # Orphaned subtask: create placeholder parent
+            # Due to paging or filtering, a subtask may have a parent that is not present in the list of tasks.
+            # We will create placeholder StructuredTask objects for these missing parents to maintain the hierarchy.
+            parent = StructuredTask({"id": parent_id, "title": "Unknown parent"})
+            task_dict[parent_id] = parent
+            root_task.add_subtask(parent)
+
+        parent.add_subtask(structured_task)
+
+    return root_task.subtasks
+
+
+def serialize_tasks(structured_tasks: List[StructuredTask], subtask_level: int) -> str:
+    """
+    Serialize a list of StructuredTask objects into a formatted string with indentation for subtasks.
+    Args:
+        structured_tasks (list): List of StructuredTask objects.
+        subtask_level (int): Current level of indentation for subtasks.
+
+    Returns:
+        str: Formatted string representation of the tasks.
+    """ 
+    response = ""
+    for task in structured_tasks:
+        indent = "  " * subtask_level
+        bullet = "-" if subtask_level == 0 else "*"
+        response += f"{indent}{bullet} {task.title or 'Untitled'} (ID: {task.id})\n"
+        response += f"  Status: {task.status or 'N/A'}\n"
+        response += f"  Due: {task.due}\n" if task.due else ""
+        if task.notes:
+            response += (
+                f"  Notes: {task.notes[:100]}{'...' if len(task.notes) > 100 else ''}\n"
+            )
+        response += f"  Completed: {task.completed}\n" if task.completed else ""
+        response += f"  Updated: {task.updated or 'N/A'}\n"
+        response += "\n"
+
+        response += serialize_tasks(task.subtasks, subtask_level + 1)
+
+    return response
 
 
 @server.tool()  # type: ignore
