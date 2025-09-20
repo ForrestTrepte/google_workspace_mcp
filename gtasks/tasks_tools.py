@@ -23,7 +23,7 @@ LIST_TASKS_MAX_POSITION = "99999999999999999999"
 
 
 class StructuredTask:
-    def __init__(self, task: Dict[str, str]) -> None:
+    def __init__(self, task: Dict[str, str], is_placeholder_parent: bool) -> None:
         self.id = task["id"]
         self.title = task.get("title", None)
         self.status = task.get("status", None)
@@ -31,6 +31,7 @@ class StructuredTask:
         self.notes = task.get("notes", None)
         self.updated = task.get("updated", None)
         self.completed = task.get("completed", None)
+        self.is_placeholder_parent = is_placeholder_parent
         self.subtasks: List["StructuredTask"] = []
 
     def add_subtask(self, subtask: "StructuredTask") -> None:
@@ -379,8 +380,6 @@ async def list_tasks(
         if not tasks:
             return f"No tasks found in task list {task_list_id} for {user_google_email}."
 
-        # TODO! remove orphaned_subtasks
-        orphaned_subtasks = sort_tasks_by_position(tasks)
         structured_tasks = get_structured_tasks(tasks)
 
         response = f"Tasks in list {task_list_id} for {user_google_email}:\n"
@@ -388,11 +387,6 @@ async def list_tasks(
 
         if next_page_token:
             response += f"Next page token: {next_page_token}\n"
-        if orphaned_subtasks > 0:
-            response += "\n"
-            response += f"{orphaned_subtasks} orphaned subtasks could not be placed in order due to missing parent information. They were listed at the end of the task list.\n"
-            response += "This can occur due to pagination. Callers can often avoid this problem if max_results is large enough to contain all tasks (subtasks and their parents) without paging.\n"
-            response += "This can also occur due to filtering that excludes parent tasks while including their subtasks or due to deleted or hidden parent tasks.\n"
 
         logger.info(f"Found {len(tasks)} tasks in list {task_list_id} for {user_google_email}")
         return response
@@ -407,82 +401,62 @@ async def list_tasks(
         raise Exception(message)
 
 
-def sort_tasks_by_position(tasks: List[Dict[str, str]]) -> int:
-    """
-    Sort tasks to match the order in which they are displayed in the Google Tasks UI according to:
-    1. parent: Subtasks should be listed immediately following their parent task.
-    2. position: The position field determines the order of tasks at the same level.
-
-    Args:
-        tasks (list): List of task dictionaries to sort in place (modified).
-
-    Returns:
-        int: The number of orphaned subtasks encountered in the list.
-    """
-    parent_positions = {
-        task["id"]: task["position"] for task in tasks if task.get("parent") is None
-    }
-
-    orphaned_subtasks = 0
-
-    def get_sort_key(task: Dict[str, str]) -> Tuple[str, str, str]:
-        nonlocal orphaned_subtasks
-
-        parent = task.get("parent")
-        position = task["position"]
-        if parent is None:
-            return (task["position"], "", "")
-        else:
-            # Note that, due to paging or filtering, a subtask may have a parent that is not present in the list of tasks.
-            # We will return these orphaned subtasks at the end of the list, grouped by their parent task IDs.
-            parent_position = parent_positions.get(parent)
-            if parent_position is None:
-                orphaned_subtasks += 1
-                logger.debug(f"Orphaned task: {task['title']}, id = {task['id']}, parent = {parent}")
-                return (f"{LIST_TASKS_MAX_POSITION}", parent, position)
-            return (parent_position, position, "")
-
-    tasks.sort(key=get_sort_key)
-    return orphaned_subtasks
-
-
 def get_structured_tasks(tasks: List[Dict[str, str]]) -> List[StructuredTask]:
     """
     Convert a flat list of task dictionaries into StructuredTask objects based on parent-child relationships sorted by position.
 
     Args:
-        tasks (list): List of task dictionaries.
+        tasks: List of task dictionaries.
 
     Returns:
         list: Sorted list of top-level StructuredTask objects with nested subtasks.
     """
-    task_dict = {task["id"]: StructuredTask(task) for task in tasks}
+    tasks_by_id = {task["id"]: StructuredTask(task, is_placeholder_parent=False) for task in tasks}
+    positions_by_id = {task["id"]: int(task["position"]) for task in tasks if "position" in task}
 
     # Placeholder virtual root as parent for top-level tasks
-    root_task = StructuredTask({"id": "root", "title": "Root"})
+    root_task = StructuredTask({"id": "root", "title": "Root"}, is_placeholder_parent=False)
 
     for task in tasks:
-        structured_task = task_dict[task["id"]]
+        structured_task = tasks_by_id[task["id"]]
         parent_id = task.get("parent")
         parent = None
 
         if not parent_id:
             # Task without parent: parent to the virtual root
             parent = root_task
-        elif parent_id in task_dict:
+        elif parent_id in tasks_by_id:
             # Subtask: parent to its actual parent
-            parent = task_dict[parent_id]
+            parent = tasks_by_id[parent_id]
         else:
             # Orphaned subtask: create placeholder parent
             # Due to paging or filtering, a subtask may have a parent that is not present in the list of tasks.
             # We will create placeholder StructuredTask objects for these missing parents to maintain the hierarchy.
-            parent = StructuredTask({"id": parent_id, "title": "Unknown parent"})
-            task_dict[parent_id] = parent
+            parent = StructuredTask({"id": parent_id}, is_placeholder_parent=True)
+            tasks_by_id[parent_id] = parent
             root_task.add_subtask(parent)
 
         parent.add_subtask(structured_task)
 
+    sort_structured_tasks(root_task, positions_by_id)
     return root_task.subtasks
+
+
+def sort_structured_tasks(root_task: StructuredTask, positions_by_id: Dict[str, int]) -> None:
+    """
+    Recursively sort--in place--StructuredTask objects and their subtasks based on position.
+
+    Args:
+        root_task: The root StructuredTask object.
+        positions_by_id: Dictionary mapping task IDs to their positions.
+    """
+    def get_position(task: StructuredTask) -> int | float:
+        result = positions_by_id.get(task.id, float("inf"))  # tasks without position go to the end
+        return result
+    
+    root_task.subtasks.sort(key=get_position)
+    for subtask in root_task.subtasks:
+        sort_structured_tasks(subtask, positions_by_id)
 
 
 def serialize_tasks(structured_tasks: List[StructuredTask], subtask_level: int) -> str:
@@ -496,21 +470,40 @@ def serialize_tasks(structured_tasks: List[StructuredTask], subtask_level: int) 
         str: Formatted string representation of the tasks.
     """ 
     response = ""
+    placeholder_parent_count = 0
+    placeholder_parent_title = "Unknown parent"
     for task in structured_tasks:
         indent = "  " * subtask_level
         bullet = "-" if subtask_level == 0 else "*"
-        response += f"{indent}{bullet} {task.title or 'Untitled'} (ID: {task.id})\n"
-        response += f"  Status: {task.status or 'N/A'}\n"
-        response += f"  Due: {task.due}\n" if task.due else ""
+        if task.title is not None:
+            title = task.title
+        elif task.is_placeholder_parent:
+            title = placeholder_parent_title
+            placeholder_parent_count += 1
+        else:
+            title = 'Untitled'
+        response += f"{indent}{bullet} {title} (ID: {task.id})\n"
+        response += f"{indent}  Status: {task.status or 'N/A'}\n"
+        response += f"{indent}  Due: {task.due}\n" if task.due else ""
         if task.notes:
             response += (
-                f"  Notes: {task.notes[:100]}{'...' if len(task.notes) > 100 else ''}\n"
+                f"{indent}  Notes: {task.notes[:100]}{'...' if len(task.notes) > 100 else ''}\n"
             )
-        response += f"  Completed: {task.completed}\n" if task.completed else ""
-        response += f"  Updated: {task.updated or 'N/A'}\n"
+        response += f"{indent}  Completed: {task.completed}\n" if task.completed else ""
+        response += f"{indent}  Updated: {task.updated or 'N/A'}\n"
         response += "\n"
 
         response += serialize_tasks(task.subtasks, subtask_level + 1)
+
+    if placeholder_parent_count > 0:
+        # Placeholder parents should only appear at the top level
+        assert subtask_level == 0
+        response += f"""
+{placeholder_parent_count} tasks with title {placeholder_parent_title} are included as placeholders.
+These placeholders contain subtasks whose parents were not present in the task list.
+This can occur due to pagination. Callers can often avoid this problem if max_results is large enough to contain all tasks (subtasks and their parents) without paging.
+This can also occur due to filtering that excludes parent tasks while including their subtasks or due to deleted or hidden parent tasks.
+"""
 
     return response
 
