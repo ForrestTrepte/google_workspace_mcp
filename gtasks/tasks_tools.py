@@ -8,7 +8,7 @@ import logging
 import asyncio
 from typing import Any, Dict, List, Optional, Tuple
 
-from googleapiclient.errors import HttpError # type: ignore
+from googleapiclient.errors import HttpError  # type: ignore
 from mcp import Resource
 
 from auth.service_decorator import require_google_service
@@ -411,11 +411,17 @@ def get_structured_tasks(tasks: List[Dict[str, str]]) -> List[StructuredTask]:
     Returns:
         list: Sorted list of top-level StructuredTask objects with nested subtasks.
     """
-    tasks_by_id = {task["id"]: StructuredTask(task, is_placeholder_parent=False) for task in tasks}
-    positions_by_id = {task["id"]: int(task["position"]) for task in tasks if "position" in task}
+    tasks_by_id = {
+        task["id"]: StructuredTask(task, is_placeholder_parent=False) for task in tasks
+    }
+    positions_by_id = {
+        task["id"]: int(task["position"]) for task in tasks if "position" in task
+    }
 
     # Placeholder virtual root as parent for top-level tasks
-    root_task = StructuredTask({"id": "root", "title": "Root"}, is_placeholder_parent=False)
+    root_task = StructuredTask(
+        {"id": "root", "title": "Root"}, is_placeholder_parent=False
+    )
 
     for task in tasks:
         structured_task = tasks_by_id[task["id"]]
@@ -442,7 +448,9 @@ def get_structured_tasks(tasks: List[Dict[str, str]]) -> List[StructuredTask]:
     return root_task.subtasks
 
 
-def sort_structured_tasks(root_task: StructuredTask, positions_by_id: Dict[str, int]) -> None:
+def sort_structured_tasks(
+    root_task: StructuredTask, positions_by_id: Dict[str, int]
+) -> None:
     """
     Recursively sort--in place--StructuredTask objects and their subtasks based on position.
 
@@ -450,10 +458,12 @@ def sort_structured_tasks(root_task: StructuredTask, positions_by_id: Dict[str, 
         root_task: The root StructuredTask object.
         positions_by_id: Dictionary mapping task IDs to their positions.
     """
+
     def get_position(task: StructuredTask) -> int | float:
-        result = positions_by_id.get(task.id, float("inf"))  # tasks without position go to the end
+        # Tasks without position go to the end (infinity)
+        result = positions_by_id.get(task.id, float("inf"))
         return result
-    
+
     root_task.subtasks.sort(key=get_position)
     for subtask in root_task.subtasks:
         sort_structured_tasks(subtask, positions_by_id)
@@ -468,7 +478,7 @@ def serialize_tasks(structured_tasks: List[StructuredTask], subtask_level: int) 
 
     Returns:
         str: Formatted string representation of the tasks.
-    """ 
+    """
     response = ""
     placeholder_parent_count = 0
     placeholder_parent_title = "Unknown parent"
@@ -481,14 +491,12 @@ def serialize_tasks(structured_tasks: List[StructuredTask], subtask_level: int) 
             title = placeholder_parent_title
             placeholder_parent_count += 1
         else:
-            title = 'Untitled'
+            title = "Untitled"
         response += f"{indent}{bullet} {title} (ID: {task.id})\n"
         response += f"{indent}  Status: {task.status or 'N/A'}\n"
         response += f"{indent}  Due: {task.due}\n" if task.due else ""
         if task.notes:
-            response += (
-                f"{indent}  Notes: {task.notes[:100]}{'...' if len(task.notes) > 100 else ''}\n"
-            )
+            response += f"{indent}  Notes: {task.notes[:100]}{'...' if len(task.notes) > 100 else ''}\n"
         response += f"{indent}  Completed: {task.completed}\n" if task.completed else ""
         response += f"{indent}  Updated: {task.updated or 'N/A'}\n"
         response += "\n"
