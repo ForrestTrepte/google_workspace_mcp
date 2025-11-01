@@ -361,17 +361,29 @@ async def list_tasks(
 
         orphaned_subtasks = sort_tasks_by_position(tasks)
 
+        # Precompute set of all IDs to detect if a task's parent is present.
+        all_ids = {t["id"] for t in tasks}
+
         response = f"Tasks in list {task_list_id} for {user_google_email}:\n"
         for task in tasks:
-            response += f"- {task.get('title', 'Untitled')} (ID: {task['id']})\n"
-            response += f"  Status: {task.get('status', 'N/A')}\n"
+            parent_id = task.get("parent")
+            # Only treat as a subtask for formatting if the parent is present in this listing
+            is_subtask = parent_id is not None and parent_id in all_ids
+
+            indent = "  " if is_subtask else ""
+            bullet = "*" if is_subtask else "-"
+
+            response += f"{indent}{bullet} {task.get('title', 'Untitled')} (ID: {task['id']})\n"
+            # Attribute lines get an extra two spaces beyond the bullet indent
+            attr_indent = indent + "  "
+            response += f"{attr_indent}Status: {task.get('status', 'N/A')}\n"
             if task.get('due'):
-                response += f"  Due: {task['due']}\n"
+                response += f"{attr_indent}Due: {task['due']}\n"
             if task.get('notes'):
-                response += f"  Notes: {task['notes'][:100]}{'...' if len(task['notes']) > 100 else ''}\n"
+                response += f"{attr_indent}Notes: {task['notes'][:100]}{'...' if len(task['notes']) > 100 else ''}\n"
             if task.get('completed'):
-                response += f"  Completed: {task['completed']}\n"
-            response += f"  Updated: {task.get('updated', 'N/A')}\n"
+                response += f"{attr_indent}Completed: {task['completed']}\n"
+            response += f"{attr_indent}Updated: {task.get('updated', 'N/A')}\n"
             response += "\n"
 
         if next_page_token:

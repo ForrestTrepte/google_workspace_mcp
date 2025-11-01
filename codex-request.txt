@@ -1,0 +1,48 @@
+Google Tasks supports creating tasks and subtasks.
+
+However, when using list_tasks, all tasks and subtasks are returned without revealing the hierarchy. For example:
+
+```
+Tasks in list NWlFTUw3T0FOdy11VFp6cg for REDACTED:
+- Clean house (ID: eTRGTzlSeU9LUmdwU1hGWQ)
+  Status: needsAction
+  Updated: 2025-09-06T23:45:38.051Z
+
+- Vacuuming (ID: LTR4eVB6U20tOEJaOEJTSg)
+  Status: needsAction
+  Updated: 2025-09-06T23:45:52.435Z
+
+- Tidy (ID: UDZpM296SUxZNFMtLXR0Sw)
+  Status: needsAction
+  Updated: 2025-09-06T23:45:55.652Z
+
+- Dusting (ID: eTByajAzSTlzM2drN3pIeA)
+  Status: needsAction
+  Updated: 2025-09-06T23:46:01.591Z
+
+- Buy groceries (ID: VmViTFVPZDRUYWRWLXZpcQ)
+  Status: needsAction
+  Updated: 2025-09-06T23:44:46.178Z
+
+- Bananas (ID: Skh6THJlNzU3Smtpb2FfMw)
+  Status: needsAction
+  Updated: 2025-09-06T23:44:52.899Z
+
+- Broccoli (ID: aWEtUE5KTWpXODBTSUpFUg)
+  Status: needsAction
+  Updated: 2025-09-06T23:44:58.057Z
+
+- Ice cream (ID: VnFRSEx6NDNid09PdnA4Rg)
+  Status: needsAction
+  Updated: 2025-09-06T23:45:01.945Z
+```
+
+In theory, an agent could determine the hierarchy by calling get_task for each task and checking its parent field. However, users may have hundreds of tasks, necessitating hundreds of tool calls in order to fully understand that user's tasks.
+
+**Describe the solution you'd like**
+list_tasks should distinguish tasks and subtasks in the information that is returned.
+
+Proposal:
+1. Main tasks are output with a dash (-) bullet. (This is unchanged from current behavior.)
+2. Subtasks are listed grouped below their main task. (This is unchanged from current behavior.)
+3. Subtasks are output with an asterisk (*) bullet and are also indented two spaces. (This is the new behavior for this feature.)

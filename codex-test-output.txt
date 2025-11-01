@@ -1,0 +1,31 @@
+Tasks in list d0R6V2pRalU5M0d2MkNFZQ for forresttrepte@gmail.com:
+- Newer task (ID: Qmc4cHNuQVpwZ0lCVkJYbw)
+  Status: needsAction
+  Updated: 2025-08-03T19:30:18.147Z
+
+- Starred task (ID: aDFSQk5MNER3bTg5aEdMZg)
+  Status: needsAction
+  Updated: 2025-09-27T00:06:10.907Z
+
+- First task (ID: RXhxaXBpNGZuU1ZoNUJ4Mw)
+  Status: needsAction
+  Updated: 2025-08-01T23:41:17.796Z
+
+- Second task (ID: al9PN3hrNVN5bWh5WjFTag)
+  Status: needsAction
+  Updated: 2025-08-01T23:41:42.339Z
+
+  * Second task, subtask 1 (ID: SjREUmR6Z2hpR2JMQ2h2Vw)
+    Status: needsAction
+    Due: 2025-08-04T00:00:00.000Z
+    Updated: 2025-08-03T18:54:30.171Z
+
+  * Second task, subtask 2 (ID: RnB0NXdQdW9IWG9MT18wQg)
+    Status: needsAction
+    Updated: 2025-08-01T23:42:10.134Z
+
+- Third task (ID: bVlYakNIeFFJY3BURDJ5Zg)
+  Status: needsAction
+  Due: 2025-08-03T00:00:00.000Z
+  Updated: 2025-08-03T18:55:23.045Z
+

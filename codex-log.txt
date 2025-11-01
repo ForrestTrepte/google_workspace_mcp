@@ -1,0 +1,141 @@
+› Google Tasks supports creating tasks and subtasks.
+
+  However, when using list_tasks, all tasks and subtasks are returned without revealing the hierarchy. For example:
+
+  ```
+  Tasks in list NWlFTUw3T0FOdy11VFp6cg for REDACTED:
+  - Clean house (ID: eTRGTzlSeU9LUmdwU1hGWQ)
+    Status: needsAction
+    Updated: 2025-09-06T23:45:38.051Z
+
+  - Vacuuming (ID: LTR4eVB6U20tOEJaOEJTSg)
+    Status: needsAction
+    Updated: 2025-09-06T23:45:52.435Z
+
+  - Tidy (ID: UDZpM296SUxZNFMtLXR0Sw)
+    Status: needsAction
+    Updated: 2025-09-06T23:45:55.652Z
+
+  - Dusting (ID: eTByajAzSTlzM2drN3pIeA)
+    Status: needsAction
+    Updated: 2025-09-06T23:46:01.591Z
+
+  - Buy groceries (ID: VmViTFVPZDRUYWRWLXZpcQ)
+    Status: needsAction
+    Updated: 2025-09-06T23:44:46.178Z
+
+  - Bananas (ID: Skh6THJlNzU3Smtpb2FfMw)
+    Status: needsAction
+    Updated: 2025-09-06T23:44:52.899Z
+
+  - Broccoli (ID: aWEtUE5KTWpXODBTSUpFUg)
+    Status: needsAction
+  - Ice cream (ID: VnFRSEx6NDNid09PdnA4Rg)
+    Status: needsAction
+    Updated: 2025-09-06T23:45:01.945Z
+  ```
+
+  user's tasks.
+
+
+  Proposal:
+  1. Main tasks are output with a dash (-) bullet. (This is unchanged from current behavior.)
+  2. Subtasks are listed grouped below their main task. (This is unchanged from current behavior.)
+  3. Subtasks are output with an asterisk (*) bullet and are also indented two spaces. (This is the new behavior for
+• I’m going to scan the repo to find the list_tasks implementation and related Google Tasks code, then adjust it to
+  group and format subtasks without extra API calls.
+
+• Ran pwsh.exe -NoLogo -Command 'rg -n "list_tasks|Tasks" -S'
+    … +35 lines
+    README.md:801:### ✓ **Google Tasks** <sub>[`tasks_tools.py`](gtasks/tasks_tools.py)</sub>
+• Ran pwsh.exe -NoLogo -Command "sed -n '1,220p' gtasks/tasks_tools.py"
+  └ sed: The term 'sed' is not recognized as a name of a cmdlet, function, script file, or executable program.
+    Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+
+• Ran pwsh.exe -NoLogo -Command 'Get-Content gtasks/tasks_tools.py -TotalCount 220'
+    … +216 lines
+        except Exception as e:
+            message = f"Unexpected error: {e}."
+
+• Ran pwsh.exe -NoLogo -Command 'Get-Content gtasks/tasks_tools.py -TotalCount 500 | Select-Object -Skip 220 -First 280'
+    … +276 lines
+    @require_google_service("tasks", "tasks")
+    @handle_http_errors("create_task", service_type="tasks")
+
+• Ran pwsh.exe -NoLogo -Command '(Get-Content gtasks/tasks_tools.py | Select-Object -Index 500..999) -join "`n"'
+  └ Select-Object: Cannot bind parameter 'Index'. Cannot convert value "500..999" to type "System.Int32". Error: "The
+    input string '500..999' was not in a correct format."
+
+• Ran pwsh.exe -NoLogo -Command 'Get-Content gtasks/tasks_tools.py | Select-Object -Skip 500 -First 250'
+  └ async def create_task(
+
+
+• Edited gtasks\tasks_tools.py (+26 -14)
+    361
+    362 -        orphaned_subtasks = sort_tasks_by_position(tasks)
+    363 -
+    364 -        response = f"Tasks in list {task_list_id} for {user_google_email}:\n"
+    365 -        for task in tasks:
+    366 -            response += f"- {task.get('title', 'Untitled')} (ID: {task['id']})\n"
+    367 -            response += f"  Status: {task.get('status', 'N/A')}\n"
+    368 -            if task.get('due'):
+    369 -                response += f"  Due: {task['due']}\n"
+    370 -            if task.get('notes'):
+    371 -                response += f"  Notes: {task['notes'][:100]}{'...' if len(task['notes']) > 100 else ''}\n"
+    372 -            if task.get('completed'):
+    373 -                response += f"  Completed: {task['completed']}\n"
+    374 -            response += f"  Updated: {task.get('updated', 'N/A')}\n"
+    375 -            response += "\n"
+    362 +        orphaned_subtasks = sort_tasks_by_position(tasks)
+    363 +
+    364 +        # Precompute set of all IDs to detect if a task's parent is present.
+    365 +        all_ids = {t["id"] for t in tasks}
+    366 +
+    367 +        response = f"Tasks in list {task_list_id} for {user_google_email}:\n"
+    368 +        for task in tasks:
+    369 +            parent_id = task.get("parent")
+    370 +            # Only treat as a subtask for formatting if the parent is present in this listing
+    371 +            is_subtask = parent_id is not None and parent_id in all_ids
+    372 +
+    373 +            indent = "  " if is_subtask else ""
+    374 +            bullet = "*" if is_subtask else "-"
+    375 +
+    376 +            response += f"{indent}{bullet} {task.get('title', 'Untitled')} (ID: {task['id']})\n"
+    377 +            # Attribute lines get an extra two spaces beyond the bullet indent
+    378 +            attr_indent = indent + "  "
+    379 +            response += f"{attr_indent}Status: {task.get('status', 'N/A')}\n"
+    380 +            if task.get('due'):
+    381 +                response += f"{attr_indent}Due: {task['due']}\n"
+    382 +            if task.get('notes'):
+    383 +                response += f"{attr_indent}Notes: {task['notes'][:100]}{'...' if len(task['notes']) > 100 else
+         ''}\n"
+    384 +            if task.get('completed'):
+    385 +                response += f"{attr_indent}Completed: {task['completed']}\n"
+    386 +            response += f"{attr_indent}Updated: {task.get('updated', 'N/A')}\n"
+    387 +            response += "\n"
+    388
+
+─ Worked for 1m 02s ────────────────────────────────────────────────────────────────────────────────────────────────────
+
+• Implemented subtask-aware formatting for list_tasks.
+
+  What changed
+
+  - Subtasks now render with two-space indent and asterisk bullet.
+  - Main tasks remain with dash bullet and no indent.
+  - Attribute lines align under each bullet (subtasks get four-space attribute indent).
+  - Orphaned subtask handling and warning remain unchanged.
+
+  Key code path
+
+  - gtasks/tasks_tools.py:360 updated to:
+      - Compute all_ids for presence checks.
+      - Detect is_subtask only when parent exists in the current listing.
+      - Apply indent and bullet accordingly.
+
+  Example formatting
+
+  - “- Task …” for main tasks, attributes indented two spaces.
+  - “  * Subtask …” for subtasks, attributes indented four spaces.
+
+  Want me to run this locally against a sample response to show before/after output, or open a PR summary?
